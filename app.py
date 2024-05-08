@@ -3,6 +3,13 @@ import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
+# Add the following names at the top of the UI
+st.markdown("**Priviledge Murombeka R207113W HDSC**")
+st.markdown("**Peter Mutsiwa R195820R CTHSC**")
+st.markdown("**Taoneswa Kasirai R204450W HAI**")
+st.markdown("**Takunda Kondo R195926T CTHSC**")
+
+# Define Spotify API credentials
 CLIENT_ID = "496be5df71524c888f6560588f5ab008"
 CLIENT_SECRET = "7921e2d638c64c4899831cbd32873f57"
 
@@ -19,7 +26,6 @@ def get_song_album_cover_url(song_name, artist_name):
     if results and results["tracks"]["items"]:
         track = results["tracks"]["items"][0]
         album_cover_url = track["album"]["images"][0]["url"]
-        print(album_cover_url)
         return album_cover_url
     else:
         return "https://i.postimg.cc/0QNxYz4V/social.png"
@@ -32,10 +38,8 @@ def recommend(song):
     recommended_music_names = []
     recommended_music_posters = []
     for i in distances[1:6]:
-        # fetch the movie poster
+        # fetch the song's album cover
         artist = music.iloc[i[0]].artist
-        print(artist)
-        print(music.iloc[i[0]].song)
         recommended_music_posters.append(
             get_song_album_cover_url(music.iloc[i[0]].song, artist))
         recommended_music_names.append(music.iloc[i[0]].song)
@@ -43,19 +47,20 @@ def recommend(song):
     return recommended_music_names, recommended_music_posters
 
 
+# Set up the Streamlit header and load data
 st.header('Music Recommender System Assignment')
 music = pickle.load(open('df.pkl', 'rb'))
 similarity = pickle.load(open('similarity.pkl', 'rb'))
 
 music_list = music['song'].values
-selected_movie = st.selectbox(
+selected_song = st.selectbox(
     "Type or select a song from the dropdown",
     music_list
 )
 
+# Display recommendations when the button is clicked
 if st.button('Show Recommendation'):
-    recommended_music_names, recommended_music_posters = recommend(
-        selected_movie)
+    recommended_music_names, recommended_music_posters = recommend(selected_song)
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.text(recommended_music_names[0])
@@ -63,7 +68,6 @@ if st.button('Show Recommendation'):
     with col2:
         st.text(recommended_music_names[1])
         st.image(recommended_music_posters[1])
-
     with col3:
         st.text(recommended_music_names[2])
         st.image(recommended_music_posters[2])

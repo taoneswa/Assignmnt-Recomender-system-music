@@ -1,73 +1,79 @@
+import pickle
 import streamlit as st
-from google.cloud import speech, translate_v2 as translate, texttospeech
-import os
-import tempfile
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
-# Function to recognize speech using Google Cloud Speech-to-Text API
-def recognize_speech(audio_file):
-    client = speech.SpeechClient()
-    with open(audio_file, "rb") as audio:
-        content = audio.read()
-    audio = speech.RecognitionAudio(content=content)
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=44100,
-        language_code="en-US",
-    )
-    response = client.recognize(config=config, audio=audio)
-    return response.results[0].alternatives[0].transcript if response.results else ""
+# Add the following names at the top of the UI
+st.markdown("**Priviledge Murombeka R207113W HDSC**")
+st.markdown("**Peter Mutsiwa R195820R CTHSC**")
+st.markdown("**Taoneswa Kasirai R204450W HAI**")
+st.markdown("**Takunda Kondo R195926T CTHSC**")
 
-# Function to translate text using Google Cloud Translation API
-def translate_text(text, target_language):
-    client = translate.Client()
-    result = client.translate(text, target_language=target_language)
-    return result["translatedText"]
+# Define Spotify API credentials
+CLIENT_ID = "496be5df71524c888f6560588f5ab008"
+CLIENT_SECRET = "7921e2d638c64c4899831cbd32873f57"
 
-# Function to synthesize speech using Google Cloud Text-to-Speech API
-def synthesize_speech(text, target_language):
-    client = texttospeech.TextToSpeechClient()
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    voice = texttospeech.VoiceSelectionParams(
-        language_code=target_language, ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-    )
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3
-    )
-    response = client.synthesize_speech(
-        input=synthesis_input, voice=voice, audio_config=audio_config
-    )
-    return response.audio_content
+# Initialize the Spotify client
+client_credentials_manager = SpotifyClientCredentials(
+    client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
-# Streamlit interface
-st.title("Speech-to-Speech Translation App")
 
-# Audio input
-audio_file = st.file_uploader("Upload an audio file", type=["wav"])
+def get_song_album_cover_url(song_name, artist_name):
+    search_query = f"track:{song_name} artist:{artist_name}"
+    results = sp.search(q=search_query, type="track")
 
-if audio_file is not None:
-    # Save the uploaded file temporarily
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file.write(audio_file.getvalue())
-        temp_file_path = temp_file.name
+    if results and results["tracks"]["items"]:
+        track = results["tracks"]["items"][0]
+        album_cover_url = track["album"]["images"][0]["url"]
+        return album_cover_url
+    else:
+        return "https://i.postimg.cc/0QNxYz4V/social.png"
 
-    # Recognize speech
-    recognized_text = recognize_speech(temp_file_path)
-    st.write("Recognized Text: ", recognized_text)
 
-    # Select target language
-    target_language = st.selectbox("Select target language", ["es", "fr", "de", "zh"])
+def recommend(song):
+    index = music[music['song'] == song].index[0]
+    distances = sorted(
+        list(enumerate(similarity[index])), reverse=True, key=lambda x: x[1])
+    recommended_music_names = []
+    recommended_music_posters = []
+    for i in distances[1:6]:
+        # fetch the song's album cover
+        artist = music.iloc[i[0]].artist
+        recommended_music_posters.append(
+            get_song_album_cover_url(music.iloc[i[0]].song, artist))
+        recommended_music_names.append(music.iloc[i[0]].song)
 
-    # Translate text
-    translated_text = translate_text(recognized_text, target_language)
-    st.write("Translated Text: ", translated_text)
+    return recommended_music_names, recommended_music_posters
 
-    # Synthesize speech
-    synthesized_speech = synthesize_speech(translated_text, target_language)
 
-    # Save synthesized speech temporarily
-    synthesized_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-    synthesized_file.write(synthesized_speech)
-    synthesized_file_path = synthesized_file.name
+# Set up the Streamlit header and load data
+st.header('Music Recommender System Assignment')
+music = pickle.load(open('df.pkl', 'rb'))
+similarity = pickle.load(open('similarity.pkl', 'rb'))
 
-    # Play synthesized speech
-    st.audio(synthesized_file_path, format="audio/mp3")
+music_list = music['song'].values
+selected_song = st.selectbox(
+    "Type or select a song from the dropdown",
+    music_list
+)
+
+# Display recommendations when the button is clicked
+if st.button('Show Recommendation'):
+    recommended_music_names, recommended_music_posters = recommend(selected_song)
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.text(recommended_music_names[0])
+        st.image(recommended_music_posters[0])
+    with col2:
+        st.text(recommended_music_names[1])
+        st.image(recommended_music_posters[1])
+    with col3:
+        st.text(recommended_music_names[2])
+        st.image(recommended_music_posters[2])
+    with col4:
+        st.text(recommended_music_names[3])
+        st.image(recommended_music_posters[3])
+    with col5:
+        st.text(recommended_music_names[4])
+        st.image(recommended_music_posters[4])
